@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Forkast Auth – Key Generator
 
-## Getting Started
+Single-page app that lets a Forkast wallet owner mint API credentials (L1 signature) and manage keys (L2 HMAC) against `https://clob.forka.st`. Built with Next.js 14 (App Router), TypeScript, Tailwind CSS, wagmi, and Supabase.
 
-First, run the development server:
+### Stack
+
+- Next.js 14 App Router, React 19, Tailwind CSS
+- wagmi (EIP-712 signing) + MetaMask / injected wallets
+- Supabase JS SDK for optional email capture
+- Web Crypto HMAC for L2 auth
+
+### Required environment variables
+
+Configure these before running locally or deploying to Vercel:
+
+| Variable | Description |
+| --- | --- |
+| `NEXT_PUBLIC_FORKAST_BASE_URL` | Forkast auth API base (default `https://clob.forka.st`) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon service key |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | Reown / WalletConnect v2 project id (enables QR wallets) |
+
+Use `.env.example` as a starting point and create a `.env.local` file (Next.js automatically loads it):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_FORKAST_BASE_URL=https://clob.forka.st
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Supabase schema
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Apply the SQL migration in `supabase/migrations/0001_key_emails.sql` to create the anonymous insert-only table used to store `{ api_key, email }` pairs:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+supabase db push
+```
 
-## Learn More
+(Alternatively, run the file contents in the Supabase SQL editor.)
 
-To learn more about Next.js, take a look at the following resources:
+### Local development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm install
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open `http://localhost:3000` and connect a Polygon (Mainnet 137 or Amoy 80002) wallet. The generate flow will:
 
-## Deploy on Vercel
+1. Step 1 (modal): collect an optional email + advanced nonce.
+2. Step 2 (modal): connect via injected wallets or Reown (WalletConnect v2), switch to Polygon 137/80002 if needed, and sign the EIP-712 `ClobAuthDomain` payload.
+3. `POST /auth/api-key` with the L1 signature headers, return the trio, and copy helpers for `.env`.
+4. If an email was provided, store `{ api_key, email }` in Supabase.
+5. Manage keys (list / revoke) via L2 HMAC signing (`timestamp + method + path(+query) + body`).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Deploying
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploy to Vercel as a standard Next.js project. Set the environment variables above in the Vercel dashboard and (optionally) run the Supabase migration via CI before first deployment.
