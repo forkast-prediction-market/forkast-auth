@@ -24,6 +24,7 @@ import type { KeyBundle } from '@/types/keygen';
 const supportedChains = [polygon, polygonAmoy];
 const supportedChainIds = new Set<number>(supportedChains.map((chain) => chain.id));
 const EMAIL_STORAGE_KEY = 'forkast-email';
+const EMAIL_STORAGE_TTL = 1000 * 60 * 60 * 24 * 3; // 3 days
 
 export function KeyGenerator() {
   const account = useAccount();
@@ -62,6 +63,7 @@ export function KeyGenerator() {
   const [isSigning, setIsSigning] = useState(false);
   const [emailNotice, setEmailNotice] = useState<string | null>(null);
   const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [nonceInputError, setNonceInputError] = useState<string | null>(null);
 
   const keyManagementDisabled = !bundle;
 
@@ -71,7 +73,19 @@ export function KeyGenerator() {
     }
     const saved = window.localStorage.getItem(EMAIL_STORAGE_KEY);
     if (saved) {
-      setEmailDraft(saved);
+      try {
+        const parsed = JSON.parse(saved) as { value?: string; savedAt?: number };
+        if (parsed?.value) {
+          const age = Date.now() - (parsed.savedAt ?? 0);
+          if (age < EMAIL_STORAGE_TTL) {
+            setEmailDraft(parsed.value);
+          } else {
+            window.localStorage.removeItem(EMAIL_STORAGE_KEY);
+          }
+        }
+      } catch {
+        window.localStorage.removeItem(EMAIL_STORAGE_KEY);
+      }
     }
   }, []);
 
@@ -82,11 +96,16 @@ export function KeyGenerator() {
     }
     const trimmed = value.trim();
     if (trimmed) {
-      window.localStorage.setItem(EMAIL_STORAGE_KEY, trimmed);
+      window.localStorage.setItem(
+        EMAIL_STORAGE_KEY,
+        JSON.stringify({ value: trimmed, savedAt: Date.now() }),
+      );
     } else {
       window.localStorage.removeItem(EMAIL_STORAGE_KEY);
     }
   };
+
+  const sanitizeNonceInput = (value: string) => value.replace(/\D+/g, '');
 
   const handleOpenModal = () => {
     setModalOpen(true);
@@ -153,7 +172,13 @@ export function KeyGenerator() {
       return;
     }
 
-    const safeNonce = nonce.trim() || '0';
+    const rawNonce = nonce.trim();
+    const safeNonce = rawNonce === '' ? '0' : sanitizeNonceInput(rawNonce);
+    if (!/^\d+$/.test(safeNonce)) {
+      setNonceInputError('Nonce must contain digits only.');
+      return;
+    }
+    setNonceInputError(null);
     if (safeNonce !== nonce) {
       setNonce(safeNonce);
     }
@@ -197,7 +222,7 @@ export function KeyGenerator() {
         nonce: safeNonce,
       });
 
-      setBundle(result);
+      setBundle({ ...result, address: account.address });
       setKeys((previous) =>
         previous.includes(result.apiKey)
           ? previous
@@ -223,9 +248,6 @@ export function KeyGenerator() {
             }
           } else {
             setEmailNotice('Saved. You can revoke any time.');
-          }
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem(EMAIL_STORAGE_KEY, trimmedEmail);
           }
           updateEmailDraft(trimmedEmail);
         } catch (error) {
@@ -466,11 +488,20 @@ export function KeyGenerator() {
                         Nonce
                       </span>
                       <input
+                        type="text"
                         value={nonce}
-                        onChange={(event) => setNonce(event.target.value)}
+                        onChange={(event) => {
+                          setNonceInputError(null);
+                          setNonce(sanitizeNonceInput(event.target.value));
+                        }}
+                        inputMode="numeric"
+                        pattern="\d*"
                         className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/30"
                         placeholder="0"
                       />
+                      {nonceInputError && (
+                        <span className="text-xs text-rose-200">{nonceInputError}</span>
+                      )}
                       <span className="text-xs text-slate-400">
                         Leave 0 unless you need a different key. Changing the nonce derives a
                         new API key.

@@ -13,6 +13,7 @@ export function EnvBlock({ bundle }: EnvBlockProps) {
   const envLines = useMemo(() => {
     if (!bundle) return '';
     return [
+      `FORKAST_ADDRESS=${bundle.address}`,
       `FORKAST_API_KEY=${bundle.apiKey}`,
       `FORKAST_API_SECRET=${bundle.apiSecret}`,
       `FORKAST_PASSPHRASE=${bundle.passphrase}`,
@@ -24,6 +25,10 @@ export function EnvBlock({ bundle }: EnvBlockProps) {
   }
 
   const inputs = [
+    {
+      label: 'FORKAST_ADDRESS',
+      value: bundle.address,
+    },
     {
       label: 'FORKAST_API_KEY',
       value: bundle.apiKey,
@@ -84,4 +89,3 @@ export function EnvBlock({ bundle }: EnvBlockProps) {
     </section>
   );
 }
-

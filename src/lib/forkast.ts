@@ -21,7 +21,24 @@ type ForkastAuthContext = {
   passphrase: string;
 };
 
-function normalizeKeyBundle(payload: unknown): KeyBundle {
+function sanitizeForkastMessage(status: number | undefined, rawMessage?: string) {
+  const normalized = (rawMessage ?? '').replace(/\s+/g, ' ').trim();
+  if (status === 401 || status === 403) {
+    return 'Credentials rejected by Forkast. Generate a fresh API key and try again.';
+  }
+  if (status === 429) {
+    return 'Too many requests. Hold on a moment before retrying.';
+  }
+  if (status === 500 || status === 503) {
+    return 'Forkast is temporarily unavailable. Retry shortly.';
+  }
+  if (normalized.length > 0) {
+    return normalized.slice(0, 200);
+  }
+  return 'Forkast request failed. Please try again.';
+}
+
+function normalizeKeyBundle(payload: unknown): Omit<KeyBundle, 'address'> {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Unexpected response when minting API key.');
   }
@@ -115,10 +132,12 @@ export async function createForkastKey({
     } catch {
       // ignore parse failure
     }
-    const enhancedMessage = response.status
-      ? `${message} (HTTP ${response.status})`
-      : message;
-    throw new Error(enhancedMessage);
+    const sanitized = sanitizeForkastMessage(response.status, message);
+    console.warn('[forkast] create key failed', {
+      status: response.status,
+      message,
+    });
+    throw new Error(sanitized);
   }
 
   const data = await response.json();
@@ -204,10 +223,12 @@ export async function listForkastKeys(auth: ForkastAuthContext) {
     } catch {
       // ignore parse error
     }
-    const enhancedMessage = response.status
-      ? `${message} (HTTP ${response.status})`
-      : message;
-    throw new Error(enhancedMessage);
+    const sanitized = sanitizeForkastMessage(response.status, message);
+    console.warn('[forkast] list keys failed', {
+      status: response.status,
+      message,
+    });
+    throw new Error(sanitized);
   }
 
   const data = await response.json();
@@ -260,10 +281,12 @@ export async function revokeForkastKey(auth: ForkastAuthContext, apiKey: string)
     } catch {
       // ignore
     }
-    const enhancedMessage = response.status
-      ? `${message} (HTTP ${response.status})`
-      : message;
-    throw new Error(enhancedMessage);
+    const sanitized = sanitizeForkastMessage(response.status, message);
+    console.warn('[forkast] revoke key failed', {
+      status: response.status,
+      message,
+    });
+    throw new Error(sanitized);
   }
 
   const payload = await response.json().catch(() => ({}));
