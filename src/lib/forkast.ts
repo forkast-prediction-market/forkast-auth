@@ -3,6 +3,15 @@ import type { KeyBundle } from '@/types/keygen';
 
 const DEFAULT_FORKAST_BASE_URL = 'https://clob.forka.st';
 
+const FORKAST_DEBUG_ERRORS_ENABLED = (() => {
+  const value = process.env.NEXT_PUBLIC_FORKAST_DEBUG_ERRORS;
+  if (!value) {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+})();
+
 export function getForkastBaseUrl() {
   return process.env.NEXT_PUBLIC_FORKAST_BASE_URL ?? DEFAULT_FORKAST_BASE_URL;
 }
@@ -23,19 +32,29 @@ type ForkastAuthContext = {
 
 function sanitizeForkastMessage(status: number | undefined, rawMessage?: string) {
   const normalized = (rawMessage ?? '').replace(/\s+/g, ' ').trim();
+  const truncated = normalized.slice(0, 200);
+
+  let sanitized: string;
   if (status === 401 || status === 403) {
-    return 'Credentials rejected by Forkast. Generate a fresh API key and try again.';
+    sanitized = 'Credentials rejected by Forkast. Generate a fresh API key and try again.';
+  } else if (status === 429) {
+    sanitized = 'Too many requests. Hold on a moment before retrying.';
+  } else if (status === 500 || status === 503) {
+    sanitized = 'Forkast is temporarily unavailable. Retry shortly.';
+  } else if (truncated.length > 0) {
+    sanitized = truncated;
+  } else {
+    sanitized = 'Forkast request failed. Please try again.';
   }
-  if (status === 429) {
-    return 'Too many requests. Hold on a moment before retrying.';
+
+  if (FORKAST_DEBUG_ERRORS_ENABLED && truncated.length > 0) {
+    if (sanitized === truncated) {
+      return truncated;
+    }
+    return `${truncated} — ${sanitized}`;
   }
-  if (status === 500 || status === 503) {
-    return 'Forkast is temporarily unavailable. Retry shortly.';
-  }
-  if (normalized.length > 0) {
-    return normalized.slice(0, 200);
-  }
-  return 'Forkast request failed. Please try again.';
+
+  return sanitized;
 }
 
 function normalizeKeyBundle(payload: unknown): Omit<KeyBundle, 'address'> {
