@@ -74,7 +74,6 @@ const wagmiAdapter = walletConnectProjectId
       networks: appKitNetworks!,
       ssr: false,
       connectors: makeBaseConnectors(),
-      featuredWalletIds: [metamaskWalletId],
       features: sharedFeatures,
     })
   : null;
