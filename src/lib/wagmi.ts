@@ -3,6 +3,13 @@
 import { createConfig, http } from 'wagmi';
 import { coinbaseWallet, injected, walletConnect } from 'wagmi/connectors';
 import { polygon, polygonAmoy } from 'wagmi/chains';
+import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
+import type { AppKitNetwork } from '@reown/appkit/networks';
+import {
+  polygon as appKitPolygon,
+  polygonAmoy as appKitPolygonAmoy,
+} from '@reown/appkit/networks';
+import { createAppKit } from '@reown/appkit/react';
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 const defaultAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://auth.forka.st';
@@ -10,37 +17,56 @@ const appIconUrl =
   process.env.NEXT_PUBLIC_APP_ICON ??
   'https://auth.forka.st/forkast-logo.svg';
 
-export const wagmiConfig = createConfig({
+const metadata = {
+  name: 'Forkast Auth',
+  description: 'Generate Forkast API credentials.',
+  url: defaultAppUrl,
+  icons: [
+    appIconUrl,
+    'https://forka.st/favicon.ico?favicon.71f60070.ico',
+  ],
+};
+
+const makeBaseConnectors = () => [
+  injected({
+    shimDisconnect: true,
+  }),
+  coinbaseWallet({
+    appName: 'Forkast Auth',
+    appLogoUrl: appIconUrl,
+    preference: 'all',
+    enableMobileWalletLink: true,
+    reloadOnDisconnect: true,
+  }),
+];
+
+const appKitNetworks = walletConnectProjectId
+  ? ([appKitPolygon, appKitPolygonAmoy] as [AppKitNetwork, ...AppKitNetwork[]])
+  : null;
+
+const wagmiAdapter = walletConnectProjectId
+  ? new WagmiAdapter({
+      projectId: walletConnectProjectId,
+      networks: appKitNetworks!,
+      ssr: false,
+      connectors: makeBaseConnectors(),
+    })
+  : null;
+
+const fallbackConfig = createConfig({
   chains: [polygon, polygonAmoy],
   transports: {
     [polygon.id]: http(),
     [polygonAmoy.id]: http(),
   },
   connectors: [
-    injected({
-      shimDisconnect: true,
-    }),
-    coinbaseWallet({
-      appName: 'Forkast Auth',
-      appLogoUrl: appIconUrl,
-      preference: 'all',
-      enableMobileWalletLink: true,
-      reloadOnDisconnect: true,
-    }),
+    ...makeBaseConnectors(),
     ...(walletConnectProjectId
       ? [
           walletConnect({
             projectId: walletConnectProjectId,
             showQrModal: true,
-            metadata: {
-              name: 'Forkast Auth',
-              description: 'Generate Forkast API credentials.',
-              url: defaultAppUrl,
-              icons: [
-                appIconUrl,
-                'https://forka.st/favicon.ico?favicon.71f60070.ico',
-              ],
-            },
+            metadata,
             qrModalOptions: {
               themeMode: 'dark',
               themeVariables: {
@@ -53,3 +79,35 @@ export const wagmiConfig = createConfig({
   ],
   multiInjectedProviderDiscovery: false,
 });
+
+export const wagmiConfig = wagmiAdapter?.wagmiConfig ?? fallbackConfig;
+export const isAppKitEnabled = Boolean(wagmiAdapter);
+
+let appKitInstance: ReturnType<typeof createAppKit> | null = null;
+
+export function ensureAppKit() {
+  if (!wagmiAdapter || !appKitNetworks || !walletConnectProjectId) {
+    return null;
+  }
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  if (appKitInstance) {
+    return appKitInstance;
+  }
+  appKitInstance = createAppKit({
+    projectId: walletConnectProjectId,
+    adapters: [wagmiAdapter],
+    networks: appKitNetworks,
+    metadata,
+    themeMode: 'dark',
+    themeVariables: {
+      '--w3m-font-family': 'var(--font-sans, Inter, sans-serif)',
+      '--w3m-accent': '#16CAC2',
+    },
+    features: {
+      analytics: process.env.NODE_ENV === 'production',
+    },
+  });
+  return appKitInstance;
+}

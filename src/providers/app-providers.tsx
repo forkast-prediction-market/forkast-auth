@@ -1,10 +1,10 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { WagmiProvider } from 'wagmi';
 
-import { wagmiConfig } from '@/lib/wagmi';
+import { ensureAppKit, wagmiConfig } from '@/lib/wagmi';
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -12,6 +12,10 @@ type AppProvidersProps = {
 
 export function AppProviders({ children }: AppProvidersProps) {
   const [queryClient] = useState(() => new QueryClient());
+
+  useEffect(() => {
+    ensureAppKit();
+  }, []);
 
   return (
     <WagmiProvider config={wagmiConfig}>
@@ -21,4 +25,3 @@ export function AppProviders({ children }: AppProvidersProps) {
     </WagmiProvider>
   );
 }
-

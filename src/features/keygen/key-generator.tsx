@@ -19,6 +19,7 @@ import { KeysPanel } from '@/components/keys-panel';
 import { shortenAddress } from '@/lib/format';
 import { createForkastKey, listForkastKeys, revokeForkastKey } from '@/lib/forkast';
 import { createSupabaseClient } from '@/lib/supabase';
+import { ensureAppKit } from '@/lib/wagmi';
 import type { KeyBundle } from '@/types/keygen';
 
 const supportedChains = [polygon, polygonAmoy];
@@ -32,6 +33,7 @@ export function KeyGenerator() {
   const { disconnect, status: disconnectStatus } = useDisconnect();
   const { switchChain, status: switchStatus } = useSwitchChain();
   const { signTypedDataAsync } = useSignTypedData();
+  const appKit = useMemo(() => ensureAppKit(), []);
 
   const isConnected = account.status === 'connected' && Boolean(account.address);
   const onAllowedChain =
@@ -89,6 +91,16 @@ export function KeyGenerator() {
     }
   }, []);
 
+  useEffect(() => {
+    if (account.status !== 'connected') {
+      setBundle(null);
+      setKeys([]);
+      setKeysHelper(null);
+      setKeysError(null);
+      setEmailNotice(null);
+    }
+  }, [account.status]);
+
   const updateEmailDraft = (value: string) => {
     setEmailDraft(value);
     if (typeof window === 'undefined') {
@@ -102,6 +114,17 @@ export function KeyGenerator() {
       );
     } else {
       window.localStorage.removeItem(EMAIL_STORAGE_KEY);
+    }
+  };
+
+  const handleWalletConnectClick = async () => {
+    if (appKit) {
+      appKit.open();
+      return;
+    }
+
+    if (reownConnector) {
+      await handleConnectorClick(reownConnector);
     }
   };
 
@@ -560,15 +583,15 @@ export function KeyGenerator() {
                   {reownConnector ? (
                     <button
                       type="button"
-                      onClick={() => handleConnectorClick(reownConnector)}
+                      onClick={handleWalletConnectClick}
                       className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#0e1a2b] px-4 py-3 text-left transition hover:bg-white/10"
                     >
                       <div>
                         <p className="text-sm font-semibold text-white">
-                          Other wallets (QR / browser)
+                          WalletConnect (QR / browser)
                         </p>
                         <p className="text-xs text-slate-300">
-                          Reown · WalletConnect v2
+                          Reown modal · mobile & desktop wallets
                         </p>
                       </div>
                       <span className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-200">
