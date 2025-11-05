@@ -1,4 +1,4 @@
-import { hmacSha256Hex } from '@/lib/crypto';
+import { hmacSha256Base64Url } from '@/lib/crypto';
 import type { KeyBundle } from '@/types/keygen';
 
 const DEFAULT_FORKAST_BASE_URL = 'https://clob.forka.st';
@@ -201,7 +201,7 @@ async function signMessage({
   const signingString = `${timestamp}${method.toUpperCase()}${pathWithQuery}${
     body ?? ''
   }`;
-  return hmacSha256Hex(apiSecret, signingString);
+  return hmacSha256Base64Url(apiSecret, signingString);
 }
 
 export async function listForkastKeys(auth: ForkastAuthContext) {

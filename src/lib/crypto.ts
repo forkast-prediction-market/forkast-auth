@@ -15,13 +15,32 @@ function base64ToUint8Array(base64: string) {
   return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.length);
 }
 
-function toHex(bytes: ArrayBuffer) {
-  return Array.from(new Uint8Array(bytes))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+function toBase64Url(bytes: ArrayBuffer) {
+  const view = new Uint8Array(bytes);
+
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(view)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '');
+  }
+
+  if (typeof btoa === 'function') {
+    let binary = '';
+    for (let i = 0; i < view.length; i += 1) {
+      binary += String.fromCharCode(view[i]);
+    }
+    return btoa(binary)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '');
+  }
+
+  throw new Error('No base64 encoder available in this environment.');
 }
 
-export async function hmacSha256Hex(secretBase64: string, message: string) {
+export async function hmacSha256Base64Url(secretBase64: string, message: string) {
   const secretBytes = base64ToUint8Array(secretBase64);
   const key = await crypto.subtle.importKey(
     'raw',
@@ -35,6 +54,5 @@ export async function hmacSha256Hex(secretBase64: string, message: string) {
   );
 
   const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(message));
-  return `0x${toHex(signature)}`;
+  return toBase64Url(signature);
 }
-
