@@ -1,7 +1,5 @@
 import type { KeyBundle } from '@/types/keygen'
 
-const DEFAULT_FORKAST_BASE_URL = 'https://clob.forka.st'
-
 const FORKAST_DEBUG_ERRORS_ENABLED = (() => {
   const value = process.env.NEXT_PUBLIC_FORKAST_DEBUG_ERRORS
   if (!value) {
@@ -12,7 +10,7 @@ const FORKAST_DEBUG_ERRORS_ENABLED = (() => {
 })()
 
 export function getForkastBaseUrl() {
-  return process.env.NEXT_PUBLIC_FORKAST_BASE_URL ?? DEFAULT_FORKAST_BASE_URL
+  return process.env.CLOB_URL!
 }
 
 interface CreateForkastKeyInput {
