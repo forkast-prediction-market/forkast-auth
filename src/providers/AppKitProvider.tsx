@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { WagmiProvider } from 'wagmi'
 import { AppKitContext, defaultAppKitValue } from '@/hooks/useAppKit'
 import {
+  appKitFeatures,
   appKitMetadata,
   appKitThemeVariables,
   featuredWalletIds,
@@ -38,14 +39,7 @@ function getOrCreateAppKit() {
       metadata: appKitMetadata,
       themeMode: 'dark',
       themeVariables: appKitThemeVariables,
-      features: {
-        analytics: process.env.NODE_ENV === 'production',
-        history: false,
-        onramp: false,
-        swaps: false,
-        receive: false,
-        send: false,
-      },
+      features: appKitFeatures,
       featuredWalletIds,
       defaultAccountTypes: { eip155: 'eoa' },
     })

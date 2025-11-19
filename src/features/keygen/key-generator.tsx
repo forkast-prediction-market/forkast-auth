@@ -1,17 +1,11 @@
 'use client'
 
 import type { KeyBundle } from '@/types/keygen'
-import { ArrowLeft, ChevronDown, X } from 'lucide-react'
+import { ArrowLeftIcon, ChevronDownIcon, XIcon } from 'lucide-react'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { UserRejectedRequestError } from 'viem'
-import {
-  useAccount,
-  useDisconnect,
-  useSignTypedData,
-  useSwitchChain,
-} from 'wagmi'
-
+import { useAccount, useDisconnect, useSignTypedData, useSwitchChain } from 'wagmi'
 import { polygon, polygonAmoy } from 'wagmi/chains'
 import { EnvBlock } from '@/components/env-block'
 import { useAppKit } from '@/hooks/useAppKit'
@@ -99,10 +93,6 @@ export function KeyGenerator() {
 
   async function handleWalletConnectClick() {
     setModalError(null)
-    if (!isAppKitReady) {
-      setModalError('Wallet modal is still loading. Please try again.')
-      return
-    }
     try {
       await openAppKit()
     }
@@ -357,7 +347,7 @@ export function KeyGenerator() {
               `}
               aria-label="Close modal"
             >
-              <X className="size-4" />
+              <XIcon className="size-4" />
             </button>
             <div className="mb-6 flex items-center justify-between">
               <div>
@@ -423,7 +413,7 @@ export function KeyGenerator() {
                       `}
                     >
                       <span>Advanced settings</span>
-                      <ChevronDown
+                      <ChevronDownIcon
                         className={`size-4 transition-transform ${modalAdvancedOpen ? 'rotate-180' : ''}`}
                       />
                     </button>
@@ -599,7 +589,7 @@ export function KeyGenerator() {
                           hover:text-white
                         `}
                       >
-                        <ArrowLeft className="size-4" />
+                        <ArrowLeftIcon className="size-4" />
                         Back
                       </button>
                       <button

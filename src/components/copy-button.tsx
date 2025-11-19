@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Copy } from 'lucide-react'
+import { CheckIcon, CopyIcon } from 'lucide-react'
 import { useState } from 'react'
 
 interface CopyButtonProps {
@@ -10,12 +10,7 @@ interface CopyButtonProps {
   ariaLabel?: string
 }
 
-export function CopyButton({
-  value,
-  size = 'md',
-  className = '',
-  ariaLabel = 'Copy to clipboard',
-}: CopyButtonProps) {
+export function CopyButton({ value, size = 'md', className = '', ariaLabel = 'Copy to clipboard' }: CopyButtonProps) {
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
@@ -43,7 +38,7 @@ export function CopyButton({
       `}
       aria-label={ariaLabel}
     >
-      {copied ? <Check size={iconSize} strokeWidth={2.5} /> : <Copy size={iconSize} />}
+      {copied ? <CheckIcon size={iconSize} strokeWidth={2.5} /> : <CopyIcon size={iconSize} />}
     </button>
   )
 }

@@ -9,10 +9,8 @@ if (!projectId) {
 }
 
 const defaultAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://auth.forka.st'
-const appIconUrl
-  = process.env.NEXT_PUBLIC_APP_ICON ?? 'https://auth.forka.st/forkast-logo.svg'
-const metamaskWalletId
-  = 'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96'
+const appIconUrl = process.env.NEXT_PUBLIC_APP_ICON ?? 'https://auth.forka.st/forkast-logo.svg'
+const metamaskWalletId = 'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96'
 
 export const networks = [polygon, polygonAmoy] as [AppKitNetwork, ...AppKitNetwork[]]
 export const defaultNetwork = polygon
@@ -42,21 +40,11 @@ export const appKitThemeVariables = {
 
 export const appKitFeatures = {
   analytics: process.env.NODE_ENV === 'production',
-  connectorTypeOrder: [
-    'injected',
-    'walletConnect',
-    'recent',
-    'featured',
-    'custom',
-    'external',
-    'recommended',
-  ] as const,
   history: false,
   onramp: false,
   swaps: false,
-  receive: true,
-  send: true,
-  reownAuthentication: false,
+  receive: false,
+  send: false,
 }
 
 export const featuredWalletIds = [metamaskWalletId]
