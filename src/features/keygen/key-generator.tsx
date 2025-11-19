@@ -35,7 +35,6 @@ export function KeyGenerator() {
   const { signTypedDataAsync } = useSignTypedData();
   const appKit = useMemo(() => ensureAppKit(), []);
   const connectedConnectorId = account.connector?.id ?? null;
-  const isAuthConnector = connectedConnectorId === 'AUTH';
 
   const isConnected = account.status === 'connected' && Boolean(account.address);
   const onAllowedChain =
@@ -65,7 +64,7 @@ export function KeyGenerator() {
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [nonceInputError, setNonceInputError] = useState<string | null>(null);
 
-  const keyManagementDisabled = !bundle || isAuthConnector;
+  const keyManagementDisabled = !bundle;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -171,9 +170,6 @@ export function KeyGenerator() {
     if (!account.address) {
       throw new Error('Connect your wallet to manage keys.');
     }
-    if (isAuthConnector) {
-      throw new Error('Email or social logins cannot manage Forkast API keys. Connect a wallet.');
-    }
 
     return {
       address: account.address,
@@ -193,12 +189,6 @@ export function KeyGenerator() {
     }
     if (!onAllowedChain) {
       setModalError('Switch to Polygon Mainnet (137) or Amoy (80002) to continue.');
-      return;
-    }
-    if (isAuthConnector) {
-      setModalError(
-        'Email or social logins cannot sign this attestation. Connect a wallet like MetaMask or Rainbow.',
-      );
       return;
     }
 
