@@ -11,7 +11,7 @@ import {
 } from '@reown/appkit/networks';
 import { createAppKit } from '@reown/appkit/react';
 
-const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+const walletConnectProjectId = process.env.NEXT_PUBLIC_REOWN_APPKIT_PROJECT_ID;
 const defaultAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://auth.forka.st';
 const appIconUrl =
   process.env.NEXT_PUBLIC_APP_ICON ??

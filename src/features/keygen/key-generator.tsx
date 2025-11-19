@@ -15,7 +15,6 @@ import { polygon, polygonAmoy } from 'wagmi/chains';
 import { UserRejectedRequestError } from 'viem';
 
 import { EnvBlock } from '@/components/env-block';
-import { KeysPanel } from '@/components/keys-panel';
 import { shortenAddress } from '@/lib/format';
 import { createForkastKey, listForkastKeys, revokeForkastKey } from '@/lib/forkast';
 import { createSupabaseClient } from '@/lib/supabase';
@@ -420,19 +419,6 @@ export function KeyGenerator() {
         </p>
       )}
 
-      {isConnected && (
-        <KeysPanel
-          keys={keys}
-          onRefresh={handleRefreshKeys}
-          onRevoke={handleRevoke}
-          loading={keysLoading}
-          disabled={keyManagementDisabled}
-          helper={keysHelper}
-          error={keysError}
-          activeKey={bundle?.apiKey ?? null}
-        />
-      )}
-
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
           <div className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#071120] p-6 shadow-2xl">
@@ -576,7 +562,7 @@ export function KeyGenerator() {
                     </button>
                   ) : (
                     <p className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300">
-                      Set <code>NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID</code> to enable QR
+                      Set <code>NEXT_PUBLIC_REOWN_APPKIT_PROJECT_ID</code> to enable QR
                       wallets (Reown).
                     </p>
                   )}

@@ -18,7 +18,7 @@ Configure these before running locally or deploying to Vercel:
 | `NEXT_PUBLIC_FORKAST_BASE_URL` | Forkast auth API base (default `https://clob.forka.st`) |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon service key |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | Reown / WalletConnect v2 project id (enables QR wallets) |
+| `NEXT_PUBLIC_REOWN_APPKIT_PROJECT_ID` | Reown / WalletConnect v2 project id (enables QR wallets) |
 | `NEXT_PUBLIC_APP_URL` | Public base URL of this app (used for WalletConnect metadata) |
 | `NEXT_PUBLIC_APP_ICON` | Absolute URL to an app icon (WalletConnect metadata) |
 
@@ -28,7 +28,7 @@ Use `.env.example` as a starting point and create a `.env.local` file (Next.js a
 NEXT_PUBLIC_FORKAST_BASE_URL=https://clob.forka.st
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...
+NEXT_PUBLIC_REOWN_APPKIT_PROJECT_ID=...
 NEXT_PUBLIC_APP_URL=https://auth.forka.st
 NEXT_PUBLIC_APP_ICON=https://auth.forka.st/forkast-logo.svg
 ```
