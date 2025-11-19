@@ -1,25 +1,17 @@
 'use client'
 
-import type { Connector } from 'wagmi'
 import type { KeyBundle } from '@/types/keygen'
-import { ArrowLeft, ChevronDown, X } from 'lucide-react'
+import { ArrowLeftIcon, ChevronDownIcon, XIcon } from 'lucide-react'
 import Image from 'next/image'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { UserRejectedRequestError } from 'viem'
-import {
-  useAccount,
-  useConnect,
-  useDisconnect,
-  useSignTypedData,
-  useSwitchChain,
-} from 'wagmi'
-
+import { useAccount, useDisconnect, useSignTypedData, useSwitchChain } from 'wagmi'
 import { polygon, polygonAmoy } from 'wagmi/chains'
 import { EnvBlock } from '@/components/env-block'
+import { useAppKit } from '@/hooks/useAppKit'
 import { createForkastKey } from '@/lib/forkast'
 import { shortenAddress } from '@/lib/format'
 import { createSupabaseClient } from '@/lib/supabase'
-import { ensureAppKit } from '@/lib/wagmi'
 
 const supportedChains = [polygon, polygonAmoy]
 const supportedChainIds = new Set<number>(supportedChains.map(chain => chain.id))
@@ -28,23 +20,16 @@ const EMAIL_STORAGE_TTL = 1000 * 60 * 60 * 24 * 3 // 3 days
 
 export function KeyGenerator() {
   const account = useAccount()
-  const { connect, connectors, error: connectError } = useConnect()
   const { disconnect, status: disconnectStatus } = useDisconnect()
   const { switchChain, status: switchStatus } = useSwitchChain()
   const { signTypedDataAsync } = useSignTypedData()
-  const appKit = useMemo(() => ensureAppKit(), [])
-  const connectedConnectorId = account.connector?.id ?? null
+  const { open: openAppKit, isReady: isAppKitReady } = useAppKit()
 
   const isConnected = account.status === 'connected' && Boolean(account.address)
   const onAllowedChain
     = isConnected && account.chainId !== undefined
       ? supportedChainIds.has(account.chainId)
       : false
-
-  const reownConnector = useMemo(
-    () => connectors.find(connectorItem => connectorItem.id === 'walletConnect'),
-    [connectors],
-  )
 
   const [nonce, setNonce] = useState('0')
   const [bundle, setBundle] = useState<KeyBundle | null>(null)
@@ -56,7 +41,6 @@ export function KeyGenerator() {
   const [modalInfo, setModalInfo] = useState<string | null>(null)
   const [isSigning, setIsSigning] = useState(false)
   const [emailNotice, setEmailNotice] = useState<string | null>(null)
-  const [connectingId, setConnectingId] = useState<string | null>(null)
   const [nonceInputError, setNonceInputError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -107,34 +91,15 @@ export function KeyGenerator() {
     }
   }
 
-  async function handleConnectorClick(connectorItem: Connector) {
+  async function handleWalletConnectClick() {
     setModalError(null)
-    setConnectingId(connectorItem.id)
     try {
-      await connect({ connector: connectorItem })
+      await openAppKit()
     }
     catch (error) {
-      let message
-        = error instanceof Error ? error.message : 'Failed to connect wallet.'
-      if (typeof message === 'string' && message.includes('Invalid App Configuration')) {
-        message
-          = 'WalletConnect rejected this domain. Confirm the project allows this URL in https://cloud.walletconnect.com.'
-      }
+      const message
+        = error instanceof Error ? error.message : 'Failed to open wallet modal.'
       setModalError(message)
-    }
-    finally {
-      setConnectingId(null)
-    }
-  }
-
-  async function handleWalletConnectClick() {
-    if (appKit) {
-      appKit.open()
-      return
-    }
-
-    if (reownConnector) {
-      await handleConnectorClick(reownConnector)
     }
   }
 
@@ -157,7 +122,6 @@ export function KeyGenerator() {
     setModalError(null)
     setModalInfo(null)
     setIsSigning(false)
-    setConnectingId(null)
   }
 
   async function handleSignAndGenerate() {
@@ -290,7 +254,6 @@ export function KeyGenerator() {
       && onAllowedChain
       && !isSigning
       && switchStatus !== 'pending'
-      && connectingId === null
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 py-10 md:py-16">
@@ -384,7 +347,7 @@ export function KeyGenerator() {
               `}
               aria-label="Close modal"
             >
-              <X className="size-4" />
+              <XIcon className="size-4" />
             </button>
             <div className="mb-6 flex items-center justify-between">
               <div>
@@ -450,7 +413,7 @@ export function KeyGenerator() {
                       `}
                     >
                       <span>Advanced settings</span>
-                      <ChevronDown
+                      <ChevronDownIcon
                         className={`size-4 transition-transform ${modalAdvancedOpen ? 'rotate-180' : ''}`}
                       />
                     </button>
@@ -521,57 +484,34 @@ export function KeyGenerator() {
                     </p>
 
                     <div className="space-y-3">
-                      {reownConnector
-                        ? (
-                            <button
-                              type="button"
-                              onClick={handleWalletConnectClick}
-                              className={`
-                                flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#0e1a2b]
-                                px-4 py-3 text-left transition
-                                hover:bg-white/10
-                              `}
-                            >
-                              <div>
-                                <p className="text-sm font-semibold text-white">
-                                  WalletConnect (QR / browser)
-                                </p>
-                                <p className="text-xs text-slate-300">
-                                  Reown modal · mobile & desktop wallets
-                                </p>
-                              </div>
-                              <span className="text-xs font-semibold tracking-[0.28em] text-slate-200 uppercase">
-                                {connectedConnectorId === reownConnector.id
-                                  ? 'Connected'
-                                  : connectingId === reownConnector.id
-                                    ? 'Connecting…'
-                                    : 'Connect'}
-                              </span>
-                            </button>
-                          )
-                        : (
-                            <p className={`
-                              rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-slate-300
-                            `}
-                            >
-                              Set
-                              {' '}
-                              <code>NEXT_PUBLIC_REOWN_APPKIT_PROJECT_ID</code>
-                              {' '}
-                              to enable QR
-                              wallets (Reown).
-                            </p>
-                          )}
-                    </div>
-
-                    {connectError && (
-                      <div className={`
-                        rounded-2xl border border-rose-400/30 bg-rose-500/15 px-4 py-3 text-sm text-rose-100
-                      `}
+                      <button
+                        type="button"
+                        onClick={handleWalletConnectClick}
+                        disabled={!isAppKitReady}
+                        className={`
+                          flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#0e1a2b] px-4
+                          py-3 text-left transition
+                          hover:bg-white/10
+                          disabled:cursor-not-allowed disabled:opacity-50
+                        `}
                       >
-                        {connectError.message ?? 'Wallet connection failed.'}
-                      </div>
-                    )}
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            WalletConnect (QR / browser)
+                          </p>
+                          <p className="text-xs text-slate-300">
+                            Reown modal · mobile & desktop wallets
+                          </p>
+                        </div>
+                        <span className="text-xs font-semibold tracking-[0.28em] text-slate-200 uppercase">
+                          {!isAppKitReady
+                            ? 'Loading…'
+                            : isConnected
+                              ? 'Connected'
+                              : 'Connect'}
+                        </span>
+                      </button>
+                    </div>
 
                     {isConnected && (
                       <div className={`
@@ -649,7 +589,7 @@ export function KeyGenerator() {
                           hover:text-white
                         `}
                       >
-                        <ArrowLeft className="size-4" />
+                        <ArrowLeftIcon className="size-4" />
                         Back
                       </button>
                       <button
