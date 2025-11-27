@@ -5,16 +5,28 @@ import { ArrowLeftIcon, ChevronDownIcon, XIcon } from 'lucide-react'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { UserRejectedRequestError } from 'viem'
-import { useAccount, useDisconnect, useSignTypedData, useSwitchChain } from 'wagmi'
+import {
+  useAccount,
+  useDisconnect,
+  useSignTypedData,
+  useSwitchChain,
+} from 'wagmi'
 import { polygon, polygonAmoy } from 'wagmi/chains'
 import { EnvBlock } from '@/components/env-block'
+import { KeysPanel } from '@/components/keys-panel'
 import { useAppKit } from '@/hooks/useAppKit'
-import { createForkastKey } from '@/lib/forkast'
+import {
+  createForkastKey,
+  listForkastKeys,
+  revokeForkastKey,
+} from '@/lib/forkast'
 import { shortenAddress } from '@/lib/format'
 import { createSupabaseClient } from '@/lib/supabase'
 
 const supportedChains = [polygon, polygonAmoy]
-const supportedChainIds = new Set<number>(supportedChains.map(chain => chain.id))
+const supportedChainIds = new Set<number>(
+  supportedChains.map(chain => chain.id),
+)
 const EMAIL_STORAGE_KEY = 'forkast-email'
 const EMAIL_STORAGE_TTL = 1000 * 60 * 60 * 24 * 3 // 3 days
 
@@ -25,7 +37,8 @@ export function KeyGenerator() {
   const { signTypedDataAsync } = useSignTypedData()
   const { open: openAppKit, isReady: isAppKitReady } = useAppKit()
 
-  const isConnected = account.status === 'connected' && Boolean(account.address)
+  const isConnected
+    = account.status === 'connected' && Boolean(account.address)
   const onAllowedChain
     = isConnected && account.chainId !== undefined
       ? supportedChainIds.has(account.chainId)
@@ -33,6 +46,10 @@ export function KeyGenerator() {
 
   const [nonce, setNonce] = useState('0')
   const [bundle, setBundle] = useState<KeyBundle | null>(null)
+  const [keys, setKeys] = useState<string[]>([])
+  const [keysLoading, setKeysLoading] = useState(false)
+  const [keysError, setKeysError] = useState<string | null>(null)
+  const [keysHelper, setKeysHelper] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalStep, setModalStep] = useState<1 | 2>(1)
   const [emailDraft, setEmailDraft] = useState('')
@@ -43,6 +60,8 @@ export function KeyGenerator() {
   const [emailNotice, setEmailNotice] = useState<string | null>(null)
   const [nonceInputError, setNonceInputError] = useState<string | null>(null)
 
+  const keyManagementDisabled = !bundle
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return
@@ -50,7 +69,10 @@ export function KeyGenerator() {
     const saved = window.localStorage.getItem(EMAIL_STORAGE_KEY)
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as { value?: string, savedAt?: number }
+        const parsed = JSON.parse(saved) as {
+          value?: string
+          savedAt?: number
+        }
         if (parsed?.value) {
           const age = Date.now() - (parsed.savedAt ?? 0)
           if (age < EMAIL_STORAGE_TTL) {
@@ -70,6 +92,9 @@ export function KeyGenerator() {
   useEffect(() => {
     if (account.status !== 'connected') {
       setBundle(null)
+      setKeys([])
+      setKeysHelper(null)
+      setKeysError(null)
       setEmailNotice(null)
     }
   }, [account.status])
@@ -124,6 +149,22 @@ export function KeyGenerator() {
     setIsSigning(false)
   }
 
+  function getAuthContext() {
+    if (!bundle) {
+      throw new Error('Generate an API key before managing credentials.')
+    }
+    if (!account.address) {
+      throw new Error('Connect your wallet to manage keys.')
+    }
+
+    return {
+      address: account.address,
+      apiKey: bundle.apiKey,
+      apiSecret: bundle.apiSecret,
+      passphrase: bundle.passphrase,
+    }
+  }
+
   async function handleSignAndGenerate() {
     setModalError(null)
     setModalInfo(null)
@@ -133,7 +174,9 @@ export function KeyGenerator() {
       return
     }
     if (!onAllowedChain) {
-      setModalError('Switch to Polygon Mainnet (137) or Amoy (80002) to continue.')
+      setModalError(
+        'Switch to Polygon Mainnet (137) or Amoy (80002) to continue.',
+      )
       return
     }
 
@@ -188,6 +231,15 @@ export function KeyGenerator() {
       })
 
       setBundle({ ...result, address: account.address })
+      setKeys(previous =>
+        previous.includes(result.apiKey)
+          ? previous
+          : [result.apiKey, ...previous],
+      )
+      setKeysHelper(
+        'New key minted. Use refresh to fetch all keys from Forkast.',
+      )
+      setKeysError(null)
 
       const trimmedEmail = emailDraft.trim()
       if (trimmedEmail) {
@@ -203,7 +255,9 @@ export function KeyGenerator() {
               setEmailNotice('Email already saved for this key.')
             }
             else {
-              throw new Error(error.message ?? 'Supabase rejected this request.')
+              throw new Error(
+                error.message ?? 'Supabase rejected this request.',
+              )
             }
           }
           else {
@@ -231,8 +285,13 @@ export function KeyGenerator() {
       if (error instanceof UserRejectedRequestError) {
         setModalError('Signature was rejected in your wallet.')
       }
-      else if (error instanceof Error && error.message?.includes('Proposal expired')) {
-        setModalError('Wallet session expired. Reopen your wallet and try connecting again.')
+      else if (
+        error instanceof Error
+        && error.message?.includes('Proposal expired')
+      ) {
+        setModalError(
+          'Wallet session expired. Reopen your wallet and try connecting again.',
+        )
         disconnect()
       }
       else {
@@ -248,12 +307,67 @@ export function KeyGenerator() {
     }
   }
 
+  async function handleRefreshKeys() {
+    setKeysError(null)
+    setKeysHelper(null)
+    setKeysLoading(true)
+    try {
+      const auth = getAuthContext()
+      const latest = await listForkastKeys(auth)
+      setKeys(latest)
+      setKeysHelper(
+        latest.length
+          ? `Loaded ${latest.length} active key${latest.length > 1 ? 's' : ''}.`
+          : 'No keys found for this wallet.',
+      )
+    }
+    catch (error) {
+      const message
+        = error instanceof Error ? error.message : 'Failed to load keys.'
+      setKeysError(message)
+      setKeys([])
+      if (error instanceof Error && /401|403/.test(message)) {
+        setBundle(null)
+        setKeysHelper(
+          'Credentials look invalid. Generate a new API key to continue.',
+        )
+      }
+    }
+    finally {
+      setKeysLoading(false)
+    }
+  }
+
+  async function handleRevoke(key: string) {
+    setKeysError(null)
+    setKeysHelper(null)
+    setKeysLoading(true)
+    try {
+      const auth = getAuthContext()
+      await revokeForkastKey(auth, key)
+      setKeys(previous => previous.filter(value => value !== key))
+      if (bundle?.apiKey === key) {
+        setBundle(null)
+        setEmailNotice(null)
+        setKeysHelper('Key revoked. Generate a new API key to keep trading.')
+      }
+      else {
+        setKeysHelper('Key revoked. Refresh to verify remaining credentials.')
+      }
+    }
+    catch (error) {
+      setKeysError(
+        error instanceof Error ? error.message : 'Failed to revoke key.',
+      )
+    }
+    finally {
+      setKeysLoading(false)
+    }
+  }
+
   const networkMismatch = isConnected && !onAllowedChain
   const canSign
-    = isConnected
-      && onAllowedChain
-      && !isSigning
-      && switchStatus !== 'pending'
+    = isConnected && onAllowedChain && !isSigning && switchStatus !== 'pending'
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 py-10 md:py-16">
@@ -281,7 +395,9 @@ export function KeyGenerator() {
               Sign a short EIP-712 message to prove wallet control.
               {' '}
               <br />
-              <strong>We can’t access your funds. No wallet balance required.</strong>
+              <strong>
+                We can’t access your funds. No wallet balance required.
+              </strong>
             </p>
           </div>
           <button
@@ -300,10 +416,11 @@ export function KeyGenerator() {
       </section>
 
       {isConnected && account.address && (
-        <div className={`
-          flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/5 px-5 py-3
-          backdrop-blur
-        `}
+        <div
+          className={`
+            flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/5 px-5 py-3
+            backdrop-blur
+          `}
         >
           <span className="text-sm text-slate-200">
             Connected as
@@ -333,6 +450,19 @@ export function KeyGenerator() {
         <p className="rounded-2xl border border-white/10 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
           {emailNotice}
         </p>
+      )}
+
+      {isConnected && (
+        <KeysPanel
+          keys={keys}
+          onRefresh={handleRefreshKeys}
+          onRevoke={handleRevoke}
+          loading={keysLoading}
+          disabled={keyManagementDisabled}
+          helper={keysHelper}
+          error={keysError}
+          activeKey={bundle?.apiKey ?? null}
+        />
       )}
 
       {modalOpen && (
@@ -398,8 +528,8 @@ export function KeyGenerator() {
                         `}
                       />
                       <p className="text-xs text-slate-400">
-                        We only send security-related updates about Forkast. Optional but
-                        recommended.
+                        We only send security-related updates about Forkast.
+                        Optional but recommended.
                       </p>
                     </div>
 
@@ -441,11 +571,13 @@ export function KeyGenerator() {
                             placeholder="0"
                           />
                           {nonceInputError && (
-                            <span className="text-xs text-rose-200">{nonceInputError}</span>
+                            <span className="text-xs text-rose-200">
+                              {nonceInputError}
+                            </span>
                           )}
                           <span className="text-xs text-slate-400">
-                            Leave 0 unless you need a different key. Changing the nonce derives a
-                            new API key.
+                            Leave 0 unless you need a different key. Changing the
+                            nonce derives a new API key.
                           </span>
                         </label>
                       </div>
@@ -480,7 +612,8 @@ export function KeyGenerator() {
               : (
                   <div className="space-y-6">
                     <p className="text-sm text-slate-300">
-                      Connect your wallet and sign to mint live Forkast API credentials
+                      Connect your wallet and sign to mint live Forkast API
+                      credentials
                     </p>
 
                     <div className="space-y-3">
@@ -514,10 +647,11 @@ export function KeyGenerator() {
                     </div>
 
                     {isConnected && (
-                      <div className={`
-                        flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0c1729] px-4 py-4 text-sm
-                        text-slate-200
-                      `}
+                      <div
+                        className={`
+                          flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0c1729] px-4 py-4 text-sm
+                          text-slate-200
+                        `}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span>
@@ -542,21 +676,23 @@ export function KeyGenerator() {
                           </button>
                         </div>
                         {networkMismatch && (
-                          <div className={`
-                            space-y-3 rounded-2xl border border-amber-300/25 bg-amber-400/10 px-4 py-3 text-xs
-                            text-amber-100
-                          `}
+                          <div
+                            className={`
+                              space-y-3 rounded-2xl border border-amber-300/25 bg-amber-400/10 px-4 py-3 text-xs
+                              text-amber-100
+                            `}
                           >
                             <p className="font-medium">
-                              Switch to Polygon Mainnet (137) or Amoy testnet (80002) before
-                              signing.
+                              Switch to Polygon Mainnet (137) or Amoy testnet
+                              (80002) before signing.
                             </p>
                             <div className="flex flex-wrap gap-2">
                               {supportedChains.map(chain => (
                                 <button
                                   key={chain.id}
                                   type="button"
-                                  onClick={() => switchChain?.({ chainId: chain.id })}
+                                  onClick={() =>
+                                    switchChain?.({ chainId: chain.id })}
                                   disabled={switchStatus === 'pending'}
                                   className={`
                                     rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold
@@ -609,18 +745,16 @@ export function KeyGenerator() {
                     </div>
 
                     {modalInfo && (
-                      <div className={`
-                        rounded-2xl border border-cyan-400/30 bg-cyan-500/15 px-4 py-3 text-sm text-cyan-100
-                      `}
+                      <div
+                        className="rounded-2xl border border-cyan-400/30 bg-cyan-500/15 px-4 py-3 text-sm text-cyan-100"
                       >
                         {modalInfo}
                       </div>
                     )}
 
                     {modalError && (
-                      <div className={`
-                        rounded-2xl border border-rose-400/30 bg-rose-500/15 px-4 py-3 text-sm text-rose-100
-                      `}
+                      <div
+                        className="rounded-2xl border border-rose-400/30 bg-rose-500/15 px-4 py-3 text-sm text-rose-100"
                       >
                         {modalError}
                       </div>
