@@ -76,7 +76,7 @@ export function KeysPanel({
                 disabled:cursor-not-allowed disabled:opacity-50
               `}
             >
-              Revoke
+              Revoke (different nonce)
             </button>
           </div>
         ))}

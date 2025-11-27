@@ -227,6 +227,7 @@ export function KeyGenerator() {
       });
 
       setBundle({ ...result, address: account.address });
+      handleRefreshKeys().catch(() => {});
       setKeys((previous) =>
         previous.includes(result.apiKey)
           ? previous
