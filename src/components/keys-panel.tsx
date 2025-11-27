@@ -73,6 +73,11 @@ export function KeysPanel({
                 type="button"
                 onClick={() => onRevoke(key)}
                 disabled={loading || disabled || !isActive}
+                title={
+                  isActive
+                    ? undefined
+                    : "This API key was minted with a different nonce."
+                }
                 className={`
                 inline-flex items-center justify-center rounded-full border border-white/10 bg-white/10 px-4 py-2
                 text-xs font-semibold tracking-widest text-rose-100 uppercase transition
@@ -80,7 +85,7 @@ export function KeysPanel({
                 disabled:cursor-not-allowed disabled:opacity-50
               `}
               >
-                {isActive ? "Revoke" : "Revoke (load matching nonce)"}
+                {isActive ? "Revoke" : "Different nonce"}
               </button>
             </div>
           );
