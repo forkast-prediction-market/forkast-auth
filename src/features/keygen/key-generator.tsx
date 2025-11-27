@@ -1,160 +1,156 @@
-'use client'
+"use client";
 
-import type { KeyBundle } from '@/types/keygen'
-import { ArrowLeftIcon, ChevronDownIcon, XIcon } from 'lucide-react'
-import Image from 'next/image'
-import { useEffect, useState } from 'react'
-import { UserRejectedRequestError } from 'viem'
+import type { KeyBundle } from "@/types/keygen";
+import { ArrowLeftIcon, ChevronDownIcon, XIcon } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { UserRejectedRequestError } from "viem";
 import {
   useAccount,
   useDisconnect,
   useSignTypedData,
   useSwitchChain,
-} from 'wagmi'
-import { polygon, polygonAmoy } from 'wagmi/chains'
-import { EnvBlock } from '@/components/env-block'
-import { KeysPanel } from '@/components/keys-panel'
-import { useAppKit } from '@/hooks/useAppKit'
+} from "wagmi";
+import { polygon, polygonAmoy } from "wagmi/chains";
+import { EnvBlock } from "@/components/env-block";
+import { KeysPanel } from "@/components/keys-panel";
+import { useAppKit } from "@/hooks/useAppKit";
 import {
   createForkastKey,
   listForkastKeys,
   revokeForkastKey,
-} from '@/lib/forkast'
-import { shortenAddress } from '@/lib/format'
-import { createSupabaseClient } from '@/lib/supabase'
+} from "@/lib/forkast";
+import { shortenAddress } from "@/lib/format";
+import { createSupabaseClient } from "@/lib/supabase";
 
-const supportedChains = [polygon, polygonAmoy]
+const supportedChains = [polygon, polygonAmoy];
 const supportedChainIds = new Set<number>(
-  supportedChains.map(chain => chain.id),
-)
-const EMAIL_STORAGE_KEY = 'forkast-email'
-const EMAIL_STORAGE_TTL = 1000 * 60 * 60 * 24 * 3 // 3 days
+  supportedChains.map((chain) => chain.id),
+);
+const EMAIL_STORAGE_KEY = "forkast-email";
+const EMAIL_STORAGE_TTL = 1000 * 60 * 60 * 24 * 3; // 3 days
 
 export function KeyGenerator() {
-  const account = useAccount()
-  const { disconnect, status: disconnectStatus } = useDisconnect()
-  const { switchChain, status: switchStatus } = useSwitchChain()
-  const { signTypedDataAsync } = useSignTypedData()
-  const { open: openAppKit, isReady: isAppKitReady } = useAppKit()
+  const account = useAccount();
+  const { disconnect, status: disconnectStatus } = useDisconnect();
+  const { switchChain, status: switchStatus } = useSwitchChain();
+  const { signTypedDataAsync } = useSignTypedData();
+  const { open: openAppKit, isReady: isAppKitReady } = useAppKit();
 
-  const isConnected
-    = account.status === 'connected' && Boolean(account.address)
-  const onAllowedChain
-    = isConnected && account.chainId !== undefined
+  const isConnected =
+    account.status === "connected" && Boolean(account.address);
+  const onAllowedChain =
+    isConnected && account.chainId !== undefined
       ? supportedChainIds.has(account.chainId)
-      : false
+      : false;
 
-  const [nonce, setNonce] = useState('0')
-  const [bundle, setBundle] = useState<KeyBundle | null>(null)
-  const [keys, setKeys] = useState<string[]>([])
-  const [keysLoading, setKeysLoading] = useState(false)
-  const [keysError, setKeysError] = useState<string | null>(null)
-  const [keysHelper, setKeysHelper] = useState<string | null>(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalStep, setModalStep] = useState<1 | 2>(1)
-  const [emailDraft, setEmailDraft] = useState('')
-  const [modalAdvancedOpen, setModalAdvancedOpen] = useState(false)
-  const [modalError, setModalError] = useState<string | null>(null)
-  const [modalInfo, setModalInfo] = useState<string | null>(null)
-  const [isSigning, setIsSigning] = useState(false)
-  const [emailNotice, setEmailNotice] = useState<string | null>(null)
-  const [nonceInputError, setNonceInputError] = useState<string | null>(null)
+  const [nonce, setNonce] = useState("0");
+  const [bundle, setBundle] = useState<KeyBundle | null>(null);
+  const [keys, setKeys] = useState<string[]>([]);
+  const [keysLoading, setKeysLoading] = useState(false);
+  const [keysError, setKeysError] = useState<string | null>(null);
+  const [keysHelper, setKeysHelper] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalStep, setModalStep] = useState<1 | 2>(1);
+  const [emailDraft, setEmailDraft] = useState("");
+  const [modalAdvancedOpen, setModalAdvancedOpen] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [modalInfo, setModalInfo] = useState<string | null>(null);
+  const [isSigning, setIsSigning] = useState(false);
+  const [emailNotice, setEmailNotice] = useState<string | null>(null);
+  const [nonceInputError, setNonceInputError] = useState<string | null>(null);
 
-  const keyManagementDisabled = !bundle
+  const keyManagementDisabled = !bundle;
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
+    if (typeof window === "undefined") {
+      return;
     }
-    const saved = window.localStorage.getItem(EMAIL_STORAGE_KEY)
+    const saved = window.localStorage.getItem(EMAIL_STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as {
-          value?: string
-          savedAt?: number
-        }
+          value?: string;
+          savedAt?: number;
+        };
         if (parsed?.value) {
-          const age = Date.now() - (parsed.savedAt ?? 0)
+          const age = Date.now() - (parsed.savedAt ?? 0);
           if (age < EMAIL_STORAGE_TTL) {
-            setEmailDraft(parsed.value)
-          }
-          else {
-            window.localStorage.removeItem(EMAIL_STORAGE_KEY)
+            setEmailDraft(parsed.value);
+          } else {
+            window.localStorage.removeItem(EMAIL_STORAGE_KEY);
           }
         }
-      }
-      catch {
-        window.localStorage.removeItem(EMAIL_STORAGE_KEY)
+      } catch {
+        window.localStorage.removeItem(EMAIL_STORAGE_KEY);
       }
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    if (account.status !== 'connected') {
-      setBundle(null)
-      setKeys([])
-      setKeysHelper(null)
-      setKeysError(null)
-      setEmailNotice(null)
+    if (account.status !== "connected") {
+      setBundle(null);
+      setKeys([]);
+      setKeysHelper(null);
+      setKeysError(null);
+      setEmailNotice(null);
     }
-  }, [account.status])
+  }, [account.status]);
 
   function updateEmailDraft(value: string) {
-    setEmailDraft(value)
-    if (typeof window === 'undefined') {
-      return
+    setEmailDraft(value);
+    if (typeof window === "undefined") {
+      return;
     }
-    const trimmed = value.trim()
+    const trimmed = value.trim();
     if (trimmed) {
       window.localStorage.setItem(
         EMAIL_STORAGE_KEY,
         JSON.stringify({ value: trimmed, savedAt: Date.now() }),
-      )
-    }
-    else {
-      window.localStorage.removeItem(EMAIL_STORAGE_KEY)
+      );
+    } else {
+      window.localStorage.removeItem(EMAIL_STORAGE_KEY);
     }
   }
 
   async function handleWalletConnectClick() {
-    setModalError(null)
+    setModalError(null);
     try {
-      await openAppKit()
-    }
-    catch (error) {
-      const message
-        = error instanceof Error ? error.message : 'Failed to open wallet modal.'
-      setModalError(message)
+      await openAppKit();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to open wallet modal.";
+      setModalError(message);
     }
   }
 
   function sanitizeNonceInput(value: string) {
-    return value.replace(/\D+/g, '')
+    return value.replace(/\D+/g, "");
   }
 
   function handleOpenModal() {
-    setModalOpen(true)
-    setModalStep(1)
-    setModalAdvancedOpen(false)
-    setModalError(null)
-    setModalInfo(null)
+    setModalOpen(true);
+    setModalStep(1);
+    setModalAdvancedOpen(false);
+    setModalError(null);
+    setModalInfo(null);
   }
 
   function handleCloseModal() {
-    setModalOpen(false)
-    setModalStep(1)
-    setModalAdvancedOpen(false)
-    setModalError(null)
-    setModalInfo(null)
-    setIsSigning(false)
+    setModalOpen(false);
+    setModalStep(1);
+    setModalAdvancedOpen(false);
+    setModalError(null);
+    setModalInfo(null);
+    setIsSigning(false);
   }
 
   function getAuthContext() {
     if (!bundle) {
-      throw new Error('Generate an API key before managing credentials.')
+      throw new Error("Generate an API key before managing credentials.");
     }
     if (!account.address) {
-      throw new Error('Connect your wallet to manage keys.')
+      throw new Error("Connect your wallet to manage keys.");
     }
 
     return {
@@ -162,212 +158,199 @@ export function KeyGenerator() {
       apiKey: bundle.apiKey,
       apiSecret: bundle.apiSecret,
       passphrase: bundle.passphrase,
-    }
+    };
   }
 
   async function handleSignAndGenerate() {
-    setModalError(null)
-    setModalInfo(null)
+    setModalError(null);
+    setModalInfo(null);
 
     if (!account.address || account.chainId === undefined) {
-      setModalError('Connect a wallet before signing.')
-      return
+      setModalError("Connect a wallet before signing.");
+      return;
     }
     if (!onAllowedChain) {
       setModalError(
-        'Switch to Polygon Mainnet (137) or Amoy (80002) to continue.',
-      )
-      return
+        "Switch to Polygon Mainnet (137) or Amoy (80002) to continue.",
+      );
+      return;
     }
 
-    const rawNonce = nonce.trim()
-    const safeNonce = rawNonce === '' ? '0' : sanitizeNonceInput(rawNonce)
+    const rawNonce = nonce.trim();
+    const safeNonce = rawNonce === "" ? "0" : sanitizeNonceInput(rawNonce);
     if (!/^\d+$/.test(safeNonce)) {
-      setNonceInputError('Nonce must contain digits only.')
-      return
+      setNonceInputError("Nonce must contain digits only.");
+      return;
     }
-    setNonceInputError(null)
+    setNonceInputError(null);
     if (safeNonce !== nonce) {
-      setNonce(safeNonce)
+      setNonce(safeNonce);
     }
 
-    const timestamp = Math.floor(Date.now() / 1000).toString()
+    const timestamp = Math.floor(Date.now() / 1000).toString();
 
     try {
-      setIsSigning(true)
-      setModalInfo('Check your wallet and sign the Forkast attestation.')
+      setIsSigning(true);
+      setModalInfo("Check your wallet and sign the Forkast attestation.");
 
       const typedData = {
         domain: {
-          name: 'ClobAuthDomain',
-          version: '1',
+          name: "ClobAuthDomain",
+          version: "1",
           chainId: account.chainId,
         },
         types: {
           ClobAuth: [
-            { name: 'address', type: 'address' as const },
-            { name: 'timestamp', type: 'string' as const },
-            { name: 'nonce', type: 'uint256' as const },
-            { name: 'message', type: 'string' as const },
+            { name: "address", type: "address" as const },
+            { name: "timestamp", type: "string" as const },
+            { name: "nonce", type: "uint256" as const },
+            { name: "message", type: "string" as const },
           ],
         },
-        primaryType: 'ClobAuth' as const,
+        primaryType: "ClobAuth" as const,
         message: {
           address: account.address,
           timestamp,
           nonce: safeNonce,
-          message: 'This message attests that I control the given wallet',
+          message: "This message attests that I control the given wallet",
         },
-      }
+      };
 
-      const signature = await signTypedDataAsync(typedData)
+      const signature = await signTypedDataAsync(typedData);
 
-      setModalInfo('Minting your Forkast credentials…')
+      setModalInfo("Minting your Forkast credentials…");
       const result = await createForkastKey({
         address: account.address,
         signature,
         timestamp,
         nonce: safeNonce,
-      })
+      });
 
-      setBundle({ ...result, address: account.address })
-      setKeys(previous =>
+      setBundle({ ...result, address: account.address });
+      setKeys((previous) =>
         previous.includes(result.apiKey)
           ? previous
           : [result.apiKey, ...previous],
-      )
+      );
       setKeysHelper(
-        'New key minted. Use refresh to fetch all keys from Forkast.',
-      )
-      setKeysError(null)
+        "New key minted. Use refresh to fetch all keys from Forkast.",
+      );
+      setKeysError(null);
 
-      const trimmedEmail = emailDraft.trim()
+      const trimmedEmail = emailDraft.trim();
       if (trimmedEmail) {
         try {
-          const supabase = createSupabaseClient()
-          const { error } = await supabase.from('key_emails').insert({
+          const supabase = createSupabaseClient();
+          const { error } = await supabase.from("key_emails").insert({
             api_key: result.apiKey,
             email: trimmedEmail,
-          })
+          });
 
           if (error) {
-            if (error.code === '23505') {
-              setEmailNotice('Email already saved for this key.')
-            }
-            else {
+            if (error.code === "23505") {
+              setEmailNotice("Email already saved for this key.");
+            } else {
               throw new Error(
-                error.message ?? 'Supabase rejected this request.',
-              )
+                error.message ?? "Supabase rejected this request.",
+              );
             }
+          } else {
+            setEmailNotice("Saved. You can revoke any time.");
           }
-          else {
-            setEmailNotice('Saved. You can revoke any time.')
-          }
-          updateEmailDraft(trimmedEmail)
-        }
-        catch (error) {
+          updateEmailDraft(trimmedEmail);
+        } catch (error) {
           setEmailNotice(
             error instanceof Error
               ? `Email save failed: ${error.message}`
-              : 'Email save failed.',
-          )
+              : "Email save failed.",
+          );
         }
-      }
-      else {
-        setEmailNotice(null)
-        updateEmailDraft('')
+      } else {
+        setEmailNotice(null);
+        updateEmailDraft("");
       }
 
-      setModalInfo(null)
-      handleCloseModal()
-    }
-    catch (error) {
+      setModalInfo(null);
+      handleCloseModal();
+    } catch (error) {
       if (error instanceof UserRejectedRequestError) {
-        setModalError('Signature was rejected in your wallet.')
-      }
-      else if (
-        error instanceof Error
-        && error.message?.includes('Proposal expired')
+        setModalError("Signature was rejected in your wallet.");
+      } else if (
+        error instanceof Error &&
+        error.message?.includes("Proposal expired")
       ) {
         setModalError(
-          'Wallet session expired. Reopen your wallet and try connecting again.',
-        )
-        disconnect()
-      }
-      else {
+          "Wallet session expired. Reopen your wallet and try connecting again.",
+        );
+        disconnect();
+      } else {
         setModalError(
           error instanceof Error
             ? error.message
-            : 'Unable to generate keys. Please try again.',
-        )
+            : "Unable to generate keys. Please try again.",
+        );
       }
-    }
-    finally {
-      setIsSigning(false)
+    } finally {
+      setIsSigning(false);
     }
   }
 
   async function handleRefreshKeys() {
-    setKeysError(null)
-    setKeysHelper(null)
-    setKeysLoading(true)
+    setKeysError(null);
+    setKeysHelper(null);
+    setKeysLoading(true);
     try {
-      const auth = getAuthContext()
-      const latest = await listForkastKeys(auth)
-      setKeys(latest)
+      const auth = getAuthContext();
+      const latest = await listForkastKeys(auth);
+      setKeys(latest);
       setKeysHelper(
         latest.length
-          ? `Loaded ${latest.length} active key${latest.length > 1 ? 's' : ''}.`
-          : 'No keys found for this wallet.',
-      )
-    }
-    catch (error) {
-      const message
-        = error instanceof Error ? error.message : 'Failed to load keys.'
-      setKeysError(message)
-      setKeys([])
+          ? `Loaded ${latest.length} active key${latest.length > 1 ? "s" : ""}.`
+          : "No keys found for this wallet.",
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load keys.";
+      setKeysError(message);
+      setKeys([]);
       if (error instanceof Error && /401|403/.test(message)) {
-        setBundle(null)
+        setBundle(null);
         setKeysHelper(
-          'Credentials look invalid. Generate a new API key to continue.',
-        )
+          "Credentials look invalid. Generate a new API key to continue.",
+        );
       }
-    }
-    finally {
-      setKeysLoading(false)
+    } finally {
+      setKeysLoading(false);
     }
   }
 
   async function handleRevoke(key: string) {
-    setKeysError(null)
-    setKeysHelper(null)
-    setKeysLoading(true)
+    setKeysError(null);
+    setKeysHelper(null);
+    setKeysLoading(true);
     try {
-      const auth = getAuthContext()
-      await revokeForkastKey(auth, key)
-      setKeys(previous => previous.filter(value => value !== key))
+      const auth = getAuthContext();
+      await revokeForkastKey(auth, key);
+      setKeys((previous) => previous.filter((value) => value !== key));
       if (bundle?.apiKey === key) {
-        setBundle(null)
-        setEmailNotice(null)
-        setKeysHelper('Key revoked. Generate a new API key to keep trading.')
+        setBundle(null);
+        setEmailNotice(null);
+        setKeysHelper("Key revoked. Generate a new API key to keep trading.");
+      } else {
+        setKeysHelper("Key revoked. Refresh to verify remaining credentials.");
       }
-      else {
-        setKeysHelper('Key revoked. Refresh to verify remaining credentials.')
-      }
-    }
-    catch (error) {
+    } catch (error) {
       setKeysError(
-        error instanceof Error ? error.message : 'Failed to revoke key.',
-      )
-    }
-    finally {
-      setKeysLoading(false)
+        error instanceof Error ? error.message : "Failed to revoke key.",
+      );
+    } finally {
+      setKeysLoading(false);
     }
   }
 
-  const networkMismatch = isConnected && !onAllowedChain
-  const canSign
-    = isConnected && onAllowedChain && !isSigning && switchStatus !== 'pending'
+  const networkMismatch = isConnected && !onAllowedChain;
+  const canSign =
+    isConnected && onAllowedChain && !isSigning && switchStatus !== "pending";
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 py-10 md:py-16">
@@ -392,9 +375,7 @@ export function KeyGenerator() {
               Generate your API key
             </h2>
             <p className="mt-3 max-w-xl text-sm text-slate-300">
-              Sign a short EIP-712 message to prove wallet control.
-              {' '}
-              <br />
+              Sign a short EIP-712 message to prove wallet control. <br />
               <strong>
                 We can’t access your funds. No wallet balance required.
               </strong>
@@ -423,8 +404,7 @@ export function KeyGenerator() {
           `}
         >
           <span className="text-sm text-slate-200">
-            Connected as
-            {' '}
+            Connected as{" "}
             <span className="font-mono text-white">
               {shortenAddress(account.address)}
             </span>
@@ -432,7 +412,7 @@ export function KeyGenerator() {
           <button
             type="button"
             onClick={() => disconnect()}
-            disabled={disconnectStatus === 'pending'}
+            disabled={disconnectStatus === "pending"}
             className={`
               inline-flex items-center justify-center rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs
               font-semibold tracking-[0.28em] text-white uppercase transition
@@ -452,7 +432,7 @@ export function KeyGenerator() {
         </p>
       )}
 
-      {isConnected && (
+      {isConnected && keys.length > 0 && (
         <KeysPanel
           keys={keys}
           onRefresh={handleRefreshKeys}
@@ -461,7 +441,6 @@ export function KeyGenerator() {
           disabled={keyManagementDisabled}
           helper={keysHelper}
           error={keysError}
-          activeKey={bundle?.apiKey ?? null}
         />
       )}
 
@@ -485,285 +464,275 @@ export function KeyGenerator() {
                   Forkast API key
                 </p>
                 <h3 className="mt-2 text-xl font-semibold text-white">
-                  {modalStep === 1 ? 'Email (optional)' : 'Connect & Sign'}
+                  {modalStep === 1 ? "Email (optional)" : "Connect & Sign"}
                 </h3>
               </div>
               <span className="text-xs font-semibold tracking-[0.3em] text-slate-400 uppercase">
-                Step
-                {' '}
-                {modalStep}
-                {' '}
-                / 2
+                Step {modalStep} / 2
               </span>
             </div>
 
-            {modalStep === 1
-              ? (
-                  <form
-                    className="space-y-5"
-                    onSubmit={(event) => {
-                      event.preventDefault()
-                      setModalStep(2)
-                      setModalError(null)
-                      setModalInfo(null)
-                    }}
+            {modalStep === 1 ? (
+              <form
+                className="space-y-5"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setModalStep(2);
+                  setModalError(null);
+                  setModalInfo(null);
+                }}
+              >
+                <div className="space-y-2">
+                  <label
+                    htmlFor="forkast-email"
+                    className="text-xs font-semibold tracking-[0.24em] text-slate-300 uppercase"
                   >
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="forkast-email"
-                        className="text-xs font-semibold tracking-[0.24em] text-slate-300 uppercase"
-                      >
-                        Email address
-                      </label>
-                      <input
-                        id="forkast-email"
-                        type="email"
-                        value={emailDraft}
-                        onChange={event => updateEmailDraft(event.target.value)}
-                        placeholder="you@team.com"
-                        className={`
+                    Email address
+                  </label>
+                  <input
+                    id="forkast-email"
+                    type="email"
+                    value={emailDraft}
+                    onChange={(event) => updateEmailDraft(event.target.value)}
+                    placeholder="you@team.com"
+                    className={`
                           w-full rounded-2xl border border-white/10 bg-[#0e1a2b] px-4 py-3 text-sm text-white transition
                           outline-none
                           focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/30
                         `}
-                      />
-                      <p className="text-xs text-slate-400">
-                        We only send security-related updates about Forkast.
-                        Optional but recommended.
-                      </p>
-                    </div>
+                  />
+                  <p className="text-xs text-slate-400">
+                    We only send security-related updates about Forkast.
+                    Optional but recommended.
+                  </p>
+                </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setModalAdvancedOpen(previous => !previous)}
-                      className={`
+                <button
+                  type="button"
+                  onClick={() => setModalAdvancedOpen((previous) => !previous)}
+                  className={`
                         flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3
                         text-left text-sm font-medium text-slate-100 transition
                         hover:bg-white/10
                       `}
-                    >
-                      <span>Advanced settings</span>
-                      <ChevronDownIcon
-                        className={`size-4 transition-transform ${modalAdvancedOpen ? 'rotate-180' : ''}`}
-                      />
-                    </button>
+                >
+                  <span>Advanced settings</span>
+                  <ChevronDownIcon
+                    className={`size-4 transition-transform ${modalAdvancedOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
 
-                    {modalAdvancedOpen && (
-                      <div className="space-y-2 rounded-2xl border border-white/10 bg-[#08162a] px-4 py-4">
-                        <label className="flex flex-col gap-2 text-sm text-slate-200">
-                          <span className="text-xs font-semibold tracking-[0.24em] text-slate-400 uppercase">
-                            Nonce
-                          </span>
-                          <input
-                            type="text"
-                            value={nonce}
-                            onChange={(event) => {
-                              setNonceInputError(null)
-                              setNonce(sanitizeNonceInput(event.target.value))
-                            }}
-                            inputMode="numeric"
-                            pattern="\d*"
-                            className={`
+                {modalAdvancedOpen && (
+                  <div className="space-y-2 rounded-2xl border border-white/10 bg-[#08162a] px-4 py-4">
+                    <label className="flex flex-col gap-2 text-sm text-slate-200">
+                      <span className="text-xs font-semibold tracking-[0.24em] text-slate-400 uppercase">
+                        Nonce
+                      </span>
+                      <input
+                        type="text"
+                        value={nonce}
+                        onChange={(event) => {
+                          setNonceInputError(null);
+                          setNonce(sanitizeNonceInput(event.target.value));
+                        }}
+                        inputMode="numeric"
+                        pattern="\d*"
+                        className={`
                               rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white
                               transition outline-none
                               focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/30
                             `}
-                            placeholder="0"
-                          />
-                          {nonceInputError && (
-                            <span className="text-xs text-rose-200">
-                              {nonceInputError}
-                            </span>
-                          )}
-                          <span className="text-xs text-slate-400">
-                            Leave 0 unless you need a different key. Changing the
-                            nonce derives a new API key.
-                          </span>
-                        </label>
-                      </div>
-                    )}
+                        placeholder="0"
+                      />
+                      {nonceInputError && (
+                        <span className="text-xs text-rose-200">
+                          {nonceInputError}
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-400">
+                        Leave 0 unless you need a different key. Changing the
+                        nonce derives a new API key.
+                      </span>
+                    </label>
+                  </div>
+                )}
 
-                    <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
-                      <button
-                        type="button"
-                        onClick={handleCloseModal}
-                        className={`
+                <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className={`
                           inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-5
                           py-2 text-sm font-semibold text-slate-200 transition
                           hover:bg-white/10
                         `}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className={`
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className={`
                           inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#10D0AF]
                           via-[#16CAC2] to-[#28B5FE] px-6 py-2 text-sm font-semibold tracking-[0.3em] text-slate-950
                           uppercase transition
                           hover:brightness-110
                         `}
-                      >
-                        Continue
-                      </button>
-                    </div>
-                  </form>
-                )
-              : (
-                  <div className="space-y-6">
-                    <p className="text-sm text-slate-300">
-                      Connect your wallet and sign to mint live Forkast API
-                      credentials
-                    </p>
+                  >
+                    Continue
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-6">
+                <p className="text-sm text-slate-300">
+                  Connect your wallet and sign to mint live Forkast API
+                  credentials
+                </p>
 
-                    <div className="space-y-3">
-                      <button
-                        type="button"
-                        onClick={handleWalletConnectClick}
-                        disabled={!isAppKitReady}
-                        className={`
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleWalletConnectClick}
+                    disabled={!isAppKitReady}
+                    className={`
                           flex w-full items-center justify-between rounded-2xl border border-white/10 bg-[#0e1a2b] px-4
                           py-3 text-left transition
                           hover:bg-white/10
                           disabled:cursor-not-allowed disabled:opacity-50
                         `}
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-white">
-                            WalletConnect (QR / browser)
-                          </p>
-                          <p className="text-xs text-slate-300">
-                            Reown modal · mobile & desktop wallets
-                          </p>
-                        </div>
-                        <span className="text-xs font-semibold tracking-[0.28em] text-slate-200 uppercase">
-                          {!isAppKitReady
-                            ? 'Loading…'
-                            : isConnected
-                              ? 'Connected'
-                              : 'Connect'}
-                        </span>
-                      </button>
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-white">
+                        WalletConnect (QR / browser)
+                      </p>
+                      <p className="text-xs text-slate-300">
+                        Reown modal · mobile & desktop wallets
+                      </p>
                     </div>
+                    <span className="text-xs font-semibold tracking-[0.28em] text-slate-200 uppercase">
+                      {!isAppKitReady
+                        ? "Loading…"
+                        : isConnected
+                          ? "Connected"
+                          : "Connect"}
+                    </span>
+                  </button>
+                </div>
 
-                    {isConnected && (
-                      <div
-                        className={`
+                {isConnected && (
+                  <div
+                    className={`
                           flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0c1729] px-4 py-4 text-sm
                           text-slate-200
                         `}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span>
-                            Connected as
-                            {' '}
-                            <span className="font-mono text-white">
-                              {shortenAddress(account.address)}
-                            </span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => disconnect()}
-                            disabled={disconnectStatus === 'pending'}
-                            className={`
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span>
+                        Connected as{" "}
+                        <span className="font-mono text-white">
+                          {shortenAddress(account.address)}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => disconnect()}
+                        disabled={disconnectStatus === "pending"}
+                        className={`
                               rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold
                               tracking-[0.28em] text-slate-200 uppercase transition
                               hover:bg-white/10
                               disabled:cursor-not-allowed disabled:opacity-60
                             `}
-                          >
-                            Disconnect
-                          </button>
-                        </div>
-                        {networkMismatch && (
-                          <div
-                            className={`
+                      >
+                        Disconnect
+                      </button>
+                    </div>
+                    {networkMismatch && (
+                      <div
+                        className={`
                               space-y-3 rounded-2xl border border-amber-300/25 bg-amber-400/10 px-4 py-3 text-xs
                               text-amber-100
                             `}
-                          >
-                            <p className="font-medium">
-                              Switch to Polygon Mainnet (137) or Amoy testnet
-                              (80002) before signing.
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {supportedChains.map(chain => (
-                                <button
-                                  key={chain.id}
-                                  type="button"
-                                  onClick={() =>
-                                    switchChain?.({ chainId: chain.id })}
-                                  disabled={switchStatus === 'pending'}
-                                  className={`
+                      >
+                        <p className="font-medium">
+                          Switch to Polygon Mainnet (137) or Amoy testnet
+                          (80002) before signing.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {supportedChains.map((chain) => (
+                            <button
+                              key={chain.id}
+                              type="button"
+                              onClick={() =>
+                                switchChain?.({ chainId: chain.id })
+                              }
+                              disabled={switchStatus === "pending"}
+                              className={`
                                     rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold
                                     text-white transition
                                     hover:bg-white/20
                                     disabled:cursor-not-allowed disabled:opacity-50
                                   `}
-                                >
-                                  {switchStatus === 'pending'
-                                    ? 'Switching…'
-                                    : `Switch to ${chain.name}`}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                            >
+                              {switchStatus === "pending"
+                                ? "Switching…"
+                                : `Switch to ${chain.name}`}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
+                  </div>
+                )}
 
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setModalStep(1)
-                          setModalError(null)
-                          setModalInfo(null)
-                        }}
-                        className={`
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalStep(1);
+                      setModalError(null);
+                      setModalInfo(null);
+                    }}
+                    className={`
                           inline-flex items-center gap-2 text-sm font-medium text-slate-300 transition
                           hover:text-white
                         `}
-                      >
-                        <ArrowLeftIcon className="size-4" />
-                        Back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSignAndGenerate}
-                        disabled={!canSign}
-                        className={`
+                  >
+                    <ArrowLeftIcon className="size-4" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSignAndGenerate}
+                    disabled={!canSign}
+                    className={`
                           inline-flex items-center justify-center rounded-full bg-gradient-to-r from-[#10D0AF]
                           via-[#16CAC2] to-[#28B5FE] px-6 py-2 text-sm font-semibold tracking-[0.3em] text-slate-950
                           uppercase transition
                           hover:brightness-110
                           disabled:cursor-not-allowed disabled:opacity-60
                         `}
-                      >
-                        {isSigning ? 'Signing…' : 'Sign & Generate'}
-                      </button>
-                    </div>
+                  >
+                    {isSigning ? "Signing…" : "Sign & Generate"}
+                  </button>
+                </div>
 
-                    {modalInfo && (
-                      <div
-                        className="rounded-2xl border border-cyan-400/30 bg-cyan-500/15 px-4 py-3 text-sm text-cyan-100"
-                      >
-                        {modalInfo}
-                      </div>
-                    )}
-
-                    {modalError && (
-                      <div
-                        className="rounded-2xl border border-rose-400/30 bg-rose-500/15 px-4 py-3 text-sm text-rose-100"
-                      >
-                        {modalError}
-                      </div>
-                    )}
+                {modalInfo && (
+                  <div className="rounded-2xl border border-cyan-400/30 bg-cyan-500/15 px-4 py-3 text-sm text-cyan-100">
+                    {modalInfo}
                   </div>
                 )}
+
+                {modalError && (
+                  <div className="rounded-2xl border border-rose-400/30 bg-rose-500/15 px-4 py-3 text-sm text-rose-100">
+                    {modalError}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }
