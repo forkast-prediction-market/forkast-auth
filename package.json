@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^6.7.1",
-    "@eslint-react/eslint-plugin": "^2.2.4",
+    "@eslint-react/eslint-plugin": "^2.4.0",
     "@next/eslint-plugin-next": "16.0.10",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.19.1",
