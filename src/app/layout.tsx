@@ -1,29 +1,26 @@
-import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
 
 import { AppProviders } from '@/providers/app-providers'
+import { openSauceOne } from '@/lib/fonts'
 
 import './globals.css'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-})
-
 export const metadata: Metadata = {
-  title: 'Forkast API Key Generator',
+  title: 'Kuest API Key Generator',
   description:
-    'Connect your wallet to mint Forkast API credentials and manage keys in seconds.',
+    'Connect your wallet to mint Kuest API credentials and manage keys in seconds.',
   icons: {
-    icon: '/forkast-logo.svg',
-    shortcut: '/forkast-logo.svg',
-    apple: '/forkast-logo.svg',
+    icon: '/kuest-logo.svg',
+    shortcut: '/kuest-logo.svg',
+    apple: '/kuest-logo.svg',
   },
+}
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#1e293b' },
+  ],
 }
 
 export default function RootLayout({
@@ -32,8 +29,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="en" className={`${openSauceOne.variable} dark`} suppressHydrationWarning>
+      <body className="flex min-h-screen flex-col font-sans antialiased">
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

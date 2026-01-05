@@ -16,10 +16,10 @@ export function EnvBlock({ bundle }: EnvBlockProps) {
     }
 
     return [
-      `FORKAST_ADDRESS=${bundle.address}`,
-      `FORKAST_API_KEY=${bundle.apiKey}`,
-      `FORKAST_API_SECRET=${bundle.apiSecret}`,
-      `FORKAST_PASSPHRASE=${bundle.passphrase}`,
+      `KUEST_ADDRESS=${bundle.address}`,
+      `KUEST_API_KEY=${bundle.apiKey}`,
+      `KUEST_API_SECRET=${bundle.apiSecret}`,
+      `KUEST_PASSPHRASE=${bundle.passphrase}`,
     ].join('\n')
   }, [bundle])
 
@@ -29,42 +29,42 @@ export function EnvBlock({ bundle }: EnvBlockProps) {
 
   const inputs = [
     {
-      label: 'FORKAST_ADDRESS',
+      label: 'KUEST_ADDRESS',
       value: bundle.address,
     },
     {
-      label: 'FORKAST_API_KEY',
+      label: 'KUEST_API_KEY',
       value: bundle.apiKey,
     },
     {
-      label: 'FORKAST_API_SECRET',
+      label: 'KUEST_API_SECRET',
       value: bundle.apiSecret,
     },
     {
-      label: 'FORKAST_PASSPHRASE',
+      label: 'KUEST_PASSPHRASE',
       value: bundle.passphrase,
     },
   ]
 
   return (
-    <section className="space-y-4 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+    <section className="space-y-4 rounded-xl border border-border/60 bg-card/80 p-6 shadow-sm">
       <header>
-        <h3 className="text-lg font-semibold text-white">Your credentials</h3>
-        <p className="mt-1 text-sm text-slate-300">
+        <h3 className="text-lg font-semibold text-foreground">Your credentials</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           Copy and keep these in a safe place. Treat them like production secrets.
         </p>
       </header>
       <div className="space-y-3">
         {inputs.map(input => (
           <label key={input.label} className="block space-y-2">
-            <span className="text-xs font-semibold tracking-[0.24em] text-slate-400 uppercase">
+            <span className="text-xs font-semibold tracking-[0.24em] text-muted-foreground uppercase">
               {input.label}
             </span>
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#0e1a2b] px-3 py-2">
+            <div className="flex items-center gap-2 rounded-md border border-border bg-input px-3 py-2">
               <input
                 value={input.value}
                 readOnly
-                className="flex-1 truncate bg-transparent font-mono text-sm text-white outline-none"
+                className="flex-1 truncate bg-transparent font-mono text-sm text-foreground outline-none"
               />
               <CopyButton
                 value={input.value}
@@ -77,7 +77,7 @@ export function EnvBlock({ bundle }: EnvBlockProps) {
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-semibold tracking-[0.24em] text-slate-400 uppercase">
+          <span className="text-xs font-semibold tracking-[0.24em] text-muted-foreground uppercase">
             .env block
           </span>
           <CopyButton value={envLines} ariaLabel="Copy env block" />
@@ -87,8 +87,8 @@ export function EnvBlock({ bundle }: EnvBlockProps) {
           readOnly
           rows={4}
           className={`
-            w-full resize-none rounded-2xl border border-white/10 bg-[#0a1627] p-3 font-mono text-xs leading-relaxed
-            text-white outline-none
+            w-full resize-none rounded-md border border-border bg-input p-3 font-mono text-xs leading-relaxed
+            text-foreground outline-none
           `}
         />
       </div>

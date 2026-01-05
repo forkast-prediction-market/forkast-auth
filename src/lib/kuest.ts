@@ -1,8 +1,8 @@
 import type { KeyBundle } from '@/types/keygen'
 import { hmacSha256Base64Url } from '@/lib/crypto'
 
-const FORKAST_DEBUG_ERRORS_ENABLED = (() => {
-  const value = process.env.NEXT_PUBLIC_FORKAST_DEBUG_ERRORS
+const KUEST_DEBUG_ERRORS_ENABLED = (() => {
+  const value = process.env.NEXT_PUBLIC_KUEST_DEBUG_ERRORS
   if (!value) {
     return false
   }
@@ -15,7 +15,7 @@ const FORKAST_DEBUG_ERRORS_ENABLED = (() => {
   )
 })()
 
-function getForkastBaseUrls() {
+function getKuestBaseUrls() {
   const values = [process.env.CLOB_URL, process.env.RELAYER_URL]
     .map(value => value?.trim())
     .filter((value): value is string => Boolean(value))
@@ -27,25 +27,25 @@ function getForkastBaseUrls() {
   return unique
 }
 
-export function getForkastBaseUrl() {
-  return getForkastBaseUrls()[0]
+export function getKuestBaseUrl() {
+  return getKuestBaseUrls()[0]
 }
 
-interface CreateForkastKeyInput {
+interface CreateKuestKeyInput {
   address: string
   signature: string
   timestamp: string
   nonce: string
 }
 
-export interface ForkastAuthContext {
+export interface KuestAuthContext {
   address: string
   apiKey: string
   apiSecret: string
   passphrase: string
 }
 
-function sanitizeForkastMessage(
+function sanitizeKuestMessage(
   status: number | undefined,
   rawMessage?: string,
 ) {
@@ -55,22 +55,22 @@ function sanitizeForkastMessage(
   let sanitized: string
   if (status === 401 || status === 403) {
     sanitized
-      = 'Credentials rejected by Forkast. Generate a fresh API key and try again.'
+      = 'Credentials rejected by Kuest. Generate a fresh API key and try again.'
   }
   else if (status === 429) {
     sanitized = 'Too many requests. Hold on a moment before retrying.'
   }
   else if (status === 500 || status === 503) {
-    sanitized = 'Forkast is temporarily unavailable. Retry shortly.'
+    sanitized = 'Kuest is temporarily unavailable. Retry shortly.'
   }
   else if (truncated.length > 0) {
     sanitized = truncated
   }
   else {
-    sanitized = 'Forkast request failed. Please try again.'
+    sanitized = 'Kuest request failed. Please try again.'
   }
 
-  if (FORKAST_DEBUG_ERRORS_ENABLED && truncated.length > 0) {
+  if (KUEST_DEBUG_ERRORS_ENABLED && truncated.length > 0) {
     if (sanitized === truncated) {
       return truncated
     }
@@ -133,7 +133,7 @@ function normalizeKeyBundle(payload: unknown): Omit<KeyBundle, 'address'> {
   if (!apiKey || !apiSecret || !passphrase) {
     const keys = Object.keys(record).join(', ') || 'none'
     throw new Error(
-      `Forkast did not return API credentials. Payload keys: ${keys}`,
+      `Kuest did not return API credentials. Payload keys: ${keys}`,
     )
   }
 
@@ -144,19 +144,19 @@ function normalizeKeyBundle(payload: unknown): Omit<KeyBundle, 'address'> {
   }
 }
 
-async function requestForkastKey(
+async function requestKuestKey(
   baseUrl: string,
-  { address, signature, timestamp, nonce }: CreateForkastKeyInput,
+  { address, signature, timestamp, nonce }: CreateKuestKeyInput,
 ) {
   const url = new URL('/auth/api-key', baseUrl)
 
   const response = await fetch(url.toString(), {
     method: 'POST',
     headers: {
-      FORKAST_ADDRESS: address,
-      FORKAST_SIGNATURE: signature,
-      FORKAST_TIMESTAMP: timestamp,
-      FORKAST_NONCE: nonce,
+      KUEST_ADDRESS: address,
+      KUEST_SIGNATURE: signature,
+      KUEST_TIMESTAMP: timestamp,
+      KUEST_NONCE: nonce,
     },
   })
 
@@ -174,8 +174,8 @@ async function requestForkastKey(
     catch {
       // ignore parse failure
     }
-    const sanitized = sanitizeForkastMessage(response.status, message)
-    console.warn('[forkast] create key failed', {
+    const sanitized = sanitizeKuestMessage(response.status, message)
+    console.warn('[kuest] create key failed', {
       baseUrl,
       status: response.status,
       message,
@@ -187,14 +187,14 @@ async function requestForkastKey(
   return normalizeKeyBundle(data)
 }
 
-export async function createForkastKey(input: CreateForkastKeyInput) {
-  const targets = getForkastBaseUrls()
+export async function createKuestKey(input: CreateKuestKeyInput) {
+  const targets = getKuestBaseUrls()
   let firstSuccess: Omit<KeyBundle, 'address'> | null = null
   let lastError: Error | null = null
 
   for (const baseUrl of targets) {
     try {
-      const result = await requestForkastKey(baseUrl, input)
+      const result = await requestKuestKey(baseUrl, input)
       if (!firstSuccess) {
         firstSuccess = result
       }
@@ -203,7 +203,7 @@ export async function createForkastKey(input: CreateForkastKeyInput) {
       const normalized
         = error instanceof Error ? error : new Error(String(error))
       lastError = normalized
-      // already logged inside requestForkastKey
+      // already logged inside requestKuestKey
     }
   }
 
@@ -222,11 +222,11 @@ function buildHeaders(options: {
   signature: string
 }) {
   return {
-    FORKAST_ADDRESS: options.address,
-    FORKAST_API_KEY: options.apiKey,
-    FORKAST_PASSPHRASE: options.passphrase,
-    FORKAST_TIMESTAMP: options.timestamp,
-    FORKAST_SIGNATURE: options.signature,
+    KUEST_ADDRESS: options.address,
+    KUEST_API_KEY: options.apiKey,
+    KUEST_PASSPHRASE: options.passphrase,
+    KUEST_TIMESTAMP: options.timestamp,
+    KUEST_SIGNATURE: options.signature,
   }
 }
 
@@ -243,7 +243,7 @@ async function signMessage(options: {
   return hmacSha256Base64Url(options.apiSecret, signingString)
 }
 
-async function fetchKeysFrom(baseUrl: string, auth: ForkastAuthContext) {
+async function fetchKeysFrom(baseUrl: string, auth: KuestAuthContext) {
   const path = '/auth/api-keys'
   const url = new URL(path, baseUrl)
   const timestamp = Math.floor(Date.now() / 1000).toString()
@@ -279,7 +279,7 @@ async function fetchKeysFrom(baseUrl: string, auth: ForkastAuthContext) {
       }
     }
     catch {}
-    const sanitized = sanitizeForkastMessage(response.status, message)
+    const sanitized = sanitizeKuestMessage(response.status, message)
     throw new Error(`${baseUrl}: ${sanitized}`)
   }
 
@@ -293,8 +293,8 @@ async function fetchKeysFrom(baseUrl: string, auth: ForkastAuthContext) {
     .filter((value): value is string => Boolean(value))
 }
 
-export async function listForkastKeys(auth: ForkastAuthContext) {
-  const targets = getForkastBaseUrls()
+export async function listKuestKeys(auth: KuestAuthContext) {
+  const targets = getKuestBaseUrls()
   const keys = new Set<string>()
   let lastError: Error | null = null
 
@@ -305,7 +305,7 @@ export async function listForkastKeys(auth: ForkastAuthContext) {
     }
     catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
-      console.warn('[forkast] list keys failed', {
+      console.warn('[kuest] list keys failed', {
         baseUrl,
         message: lastError.message,
       })
@@ -321,7 +321,7 @@ export async function listForkastKeys(auth: ForkastAuthContext) {
 
 async function revokeKeyOn(
   baseUrl: string,
-  auth: ForkastAuthContext,
+  auth: KuestAuthContext,
   apiKey: string,
 ) {
   const path = '/auth/api-key'
@@ -361,16 +361,16 @@ async function revokeKeyOn(
       }
     }
     catch {}
-    const sanitized = sanitizeForkastMessage(response.status, message)
+    const sanitized = sanitizeKuestMessage(response.status, message)
     throw new Error(`${baseUrl}: ${sanitized}`)
   }
 }
 
-export async function revokeForkastKey(
-  auth: ForkastAuthContext,
+export async function revokeKuestKey(
+  auth: KuestAuthContext,
   apiKey: string,
 ) {
-  const targets = getForkastBaseUrls()
+  const targets = getKuestBaseUrls()
   let success = false
   let lastError: Error | null = null
 
@@ -381,7 +381,7 @@ export async function revokeForkastKey(
     }
     catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
-      console.warn('[forkast] revoke key failed', {
+      console.warn('[kuest] revoke key failed', {
         baseUrl,
         message: lastError.message,
       })

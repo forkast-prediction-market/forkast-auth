@@ -1,6 +1,6 @@
-## Forkast Auth – Key Generator
+## Kuest Auth – Key Generator
 
-Single-page app that lets a Forkast wallet owner mint API credentials (L1 signature) and manage keys (L2 HMAC) against `https://clob.forka.st`. Built with Next.js 14 (App Router), TypeScript, Tailwind CSS, wagmi, and Supabase.
+Single-page app that lets a Kuest wallet owner mint API credentials (L1 signature) and manage keys (L2 HMAC) against `https://clob.kuest.com`. Built with Next.js 14 (App Router), TypeScript, Tailwind CSS, wagmi, and Supabase.
 
 ### Stack
 
@@ -27,8 +27,8 @@ Use `.env.example` as a starting point and create a `.env.local` file (Next.js a
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_REOWN_APPKIT_PROJECT_ID=...
-NEXT_PUBLIC_APP_URL=https://auth.forka.st
-NEXT_PUBLIC_APP_ICON=https://auth.forka.st/forkast-logo.svg
+NEXT_PUBLIC_APP_URL=https://auth.kuest.com
+NEXT_PUBLIC_APP_ICON=https://auth.kuest.com/kuest-logo.svg
 ```
 
 ### Supabase schema

@@ -9,7 +9,7 @@ export type GeneratedKey = KeyBundle & {
   createdAt?: string
 }
 
-export interface ForkastError {
+export interface KuestError {
   message: string
   status?: number
 }

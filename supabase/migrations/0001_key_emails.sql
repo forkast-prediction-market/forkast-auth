@@ -1,4 +1,4 @@
--- Forkast Auth email opt-in storage
+-- Kuest Auth email opt-in storage
 create table if not exists public.key_emails (
   api_key uuid not null,
   email text not null check (position('@' in email) > 1),
@@ -13,4 +13,3 @@ on public.key_emails
 for insert
 to anon
 with check (true);
-

@@ -15,7 +15,9 @@ export function AppProviders({ children }: AppProvidersProps) {
   return (
     <AppKitProvider>
       <QueryClientProvider client={queryClient}>
-        {children}
+        <div className="min-h-screen bg-background text-foreground">
+          {children}
+        </div>
       </QueryClientProvider>
     </AppKitProvider>
   )
