@@ -16,11 +16,14 @@ allowBuilds:
   workerd: false
 
 overrides:
+  axios: 1.19.0
+  uuid: 11.1.1
+  ws: 8.21.0
   '@walletconnect/relay-auth>@noble/curves': 1.8.1
   '@walletconnect/relay-auth>@noble/hashes': 1.7.1
   vite: 'catalog:'
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.4
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.8
   vite-plus: 0.2.8
 peerDependencyRules:
   allowAny:
