@@ -23,8 +23,8 @@ overrides:
   '@walletconnect/relay-auth>@noble/hashes': 1.7.1
   vite: 'catalog:'
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.8
-  vite-plus: 0.2.8
+  vite: npm:@voidzero-dev/vite-plus-core@latest
+  vite-plus: latest
 peerDependencyRules:
   allowAny:
     - vite

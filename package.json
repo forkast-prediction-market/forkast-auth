@@ -20,31 +20,31 @@
     "@reown/appkit": "1.8.23",
     "@reown/appkit-adapter-wagmi": "1.8.23",
     "@tanstack/react-query": "5.101.4",
-    "lucide-react": "1.30.0",
+    "lucide-react": "1.31.0",
     "postgres": "3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "viem": "2.55.11",
+    "viem": "2.55.16",
     "wagmi": "2.19.5"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.51.1",
-    "@cloudflare/workers-types": "5.20260804.1",
+    "@cloudflare/vite-plugin": "1.52.1",
+    "@cloudflare/workers-types": "5.20260814.1",
     "@tailwindcss/vite": "4.3.3",
-    "@types/node": "26.1.2",
+    "@types/node": "26.2.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "6.0.5",
     "eslint-plugin-react-you-might-not-need-an-effect": "1.0.1",
-    "knip": "6.32.0",
+    "knip": "6.32.2",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:",
-    "wrangler": "4.120.0"
+    "wrangler": "4.123.0"
   },
   "engines": {
     "node": "24.x"
   },
-  "packageManager": "pnpm@11.20.0"
+  "packageManager": "pnpm@11.22.0"
 }
